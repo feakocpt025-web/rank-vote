@@ -1,14 +1,5 @@
-"""
-RankVote: Instant Runoff Voting System
-
-A program that implements ranked-choice voting (instant runoff voting).
-Voters rank candidates by preference, and if no candidate has a majority,
-the candidate with fewest votes is eliminated and votes redistributed.
-"""
-
 import sys
 from typing import List, Dict, Optional, Set
-
 
 class RankVote:
     """Manages an instant runoff voting election."""
@@ -34,7 +25,14 @@ class RankVote:
         Returns:
             True if ballot is valid and added, False otherwise
         """
-        pass
+        if len(rankings) != len(self.candidates):
+            return False  # Invalid ballot if number of rankings is not correct
+        if any(c not in self.candidates for c in rankings):
+            return False  # Invalid ballot if any candidate is not in the list
+        if len(set(rankings)) != len(rankings):
+            return False  # Invalid ballot if there are duplicates
+        self.ballots.append(rankings)
+        return True
 
     def get_vote_counts(self) -> Dict[str, int]:
         """
@@ -43,7 +41,14 @@ class RankVote:
         Returns:
             Dictionary mapping candidate names to their vote counts
         """
-        pass
+        vote_counts = {candidate: 0 for candidate in self.candidates if candidate not in self.eliminated}
+        for ballot in self.ballots:
+            # Find the first non-eliminated choice for the ballot
+            for choice in ballot:
+                if choice not in self.eliminated:
+                    vote_counts[choice] += 1
+                    break
+        return vote_counts
 
     def has_majority_winner(self) -> Optional[str]:
         """
@@ -52,7 +57,12 @@ class RankVote:
         Returns:
             Name of candidate with majority, or None if no majority
         """
-        pass
+        total_votes = len(self.ballots)
+        vote_counts = self.get_vote_counts()
+        for candidate, count in vote_counts.items():
+            if count > total_votes / 2:
+                return candidate
+        return None
 
     def find_last_place(self) -> List[str]:
         """
@@ -61,7 +71,9 @@ class RankVote:
         Returns:
             List of candidate names tied for last place
         """
-        pass
+        vote_counts = self.get_vote_counts()
+        min_votes = min(vote_counts.values()) if vote_counts else 0
+        return [candidate for candidate, votes in vote_counts.items() if votes == min_votes]
 
     def is_tie(self, candidates: List[str]) -> bool:
         """
@@ -73,7 +85,9 @@ class RankVote:
         Returns:
             True if all candidates have equal votes, False otherwise
         """
-        pass
+        vote_counts = self.get_vote_counts()
+        votes = [vote_counts.get(candidate, 0) for candidate in candidates]
+        return len(set(votes)) == 1
 
     def eliminate_candidate(self, candidate: str) -> None:
         """
@@ -83,7 +97,7 @@ class RankVote:
         Args:
             candidate: Name of candidate to eliminate
         """
-        pass
+        self.eliminated.add(candidate)
 
     def get_remaining_candidates(self) -> List[str]:
         """
@@ -92,7 +106,7 @@ class RankVote:
         Returns:
             List of non-eliminated candidate names
         """
-        pass
+        return [candidate for candidate in self.candidates if candidate not in self.eliminated]
 
     def run_election(self) -> str:
         """
@@ -104,8 +118,21 @@ class RankVote:
         Raises:
             ValueError: If election ends in a complete tie
         """
-        pass
+        while True:
+            # Check for majority winner
+            winner = self.has_majority_winner()
+            if winner:
+                return winner
 
+            # Find the last place candidate(s)
+            last_place = self.find_last_place()
+
+            # If there's a tie for last place among all candidates, raise an error
+            if len(last_place) == len(self.get_remaining_candidates()):
+                raise ValueError("Election ends in a complete tie. No winner.")
+
+            # Eliminate the last place candidate(s) (arbitrarily choose one if there's a tie)
+            self.eliminate_candidate(last_place[0])
 
 def main():
     """Main program entry point."""
@@ -154,6 +181,6 @@ def main():
         print(f"\n❌ {e}")
         sys.exit(1)
 
-
 if __name__ == "__main__":
     main()
+
